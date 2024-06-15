@@ -57,26 +57,7 @@ public class NPlusOne {
 
     @BeforeEach
     void setupTestData() {
-        List<Article> articles = new ArrayList<>();
-
-        for (int i = 1; i <= 3; i++) {
-            Article article = Article.builder()
-                    .name("Article " + i)
-                    .build();
-            List<Comment> comments = new ArrayList<>();
-            article.setComments(comments);
-            for (int j = 1; j <= 5; j++) {
-                Comment comment = Comment.builder()
-                        .article(article)
-                        .text("Comment " + j + " for article " + i)
-                        .build();
-                comments.add(comment);
-            }
-
-            articles.add(article);
-            articleRepository.saveAndFlush(article);
-            commentRepository.saveAllAndFlush(comments);
-        }
+        setupArticlesAndComments(3, 5);
 
         // Clearing the Hibernate session
         // to ensure all subsequent queries go directly to the database
@@ -171,6 +152,29 @@ public class NPlusOne {
     @Transactional
     void solveNPlusOneManyToOne() {
         List<Comment> foundComments = commentRepository.findAllFetchArticles();
+    }
+
+    public void setupArticlesAndComments(int numArticles, int numCommentsPerArticle) {
+        List<Article> articles = new ArrayList<>();
+
+        for (int i = 1; i <= numArticles; i++) {
+            Article article = Article.builder()
+                    .name("Article " + i)
+                    .build();
+            List<Comment> comments = new ArrayList<>();
+            article.setComments(comments);
+            for (int j = 1; j <= numCommentsPerArticle; j++) {
+                Comment comment = Comment.builder()
+                        .article(article)
+                        .text("Comment " + j + " for article " + i)
+                        .build();
+                comments.add(comment);
+            }
+
+            articles.add(article);
+            articleRepository.saveAndFlush(article);
+            commentRepository.saveAllAndFlush(comments);
+        }
     }
 
 }
