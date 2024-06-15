@@ -23,11 +23,11 @@ public class Article {
     private String name;
 
 
-    @OneToMany(mappedBy = "article", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "article", fetch = FetchType.LAZY)
     private List<Comment> comments;
 
     @Fetch(FetchMode.SUBSELECT)
-    @OneToMany(mappedBy = "article", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "article", fetch = FetchType.LAZY)
     private List<Comment> commentsSubSelect;
 
 }

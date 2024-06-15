@@ -4,12 +4,16 @@ import dev.roman.jpapitfalls.entity.Article;
 import dev.roman.jpapitfalls.entity.Comment;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.hibernate.LazyInitializationException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -19,14 +23,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class demonstrates the potential performance issues
- * that can occur when a non-read-only transaction is used. In such cases, Hibernate performs dirty checking
- * after each transaction, which can be unnecessary and lead to performance degradation when we only need to read data.
+ * This class demonstrates LazyInitializationException
  */
 @Testcontainers
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-public class UnnecessaryDirtyCheckingInNonReadOnlyTransaction {
+public class LazyInitializationExceptionProblem {
 
     @Container
     public static PostgreSQLContainer database = new PostgreSQLContainer("postgres:latest");
@@ -42,44 +44,44 @@ public class UnnecessaryDirtyCheckingInNonReadOnlyTransaction {
     ArticleRepository articleRepository;
 
     @Autowired
-    ArticleRepositoryEntityGraph articleRepositoryEntityGraph;
-
-    @Autowired
     CommentRepository commentRepository;
 
-    /**
-     *  In this method, the transaction is not read-only (readOnly = false).
-     *  Therefore, dirty checking is enabled, which may not be necessary in this case.
-     */
-    @Test
-    void showProblemWithNonReadOnlyTransaction() {
-        setupArticlesAndComments(100, 10);
-        selectWithNonReadOnly();
+    @PersistenceContext
+    EntityManager entityManager;
+
+    @BeforeEach
+    void setupTestData() {
+        setupArticlesAndComments(3, 5);
+
+        // Clearing the Hibernate session
+        // to ensure all subsequent queries go directly to the database
+        entityManager.clear();
     }
 
     /**
-     *  In this method, the transaction is read-only (readOnly = true).
-     *  This disables dirty checking, which can improve performance when we only need to read data.
+     * This test method demonstrates the occurrence of LazyInitializationException
+     * when trying to access uninitialized proxy or collection outside a session.
      */
+    @Transactional(propagation = Propagation.NEVER)
     @Test
-    void showSolutionWithReadOnlyTransaction() {
-        setupArticlesAndComments(100, 10);
-        selectWithReadOnly();
+    public void showLazyInitializationException() {
+        Assertions.assertThrows(LazyInitializationException.class, () -> {
+            List<Comment> comments = articleRepository.findAll().get(0).getComments();
+            System.out.println(comments);
+        });
     }
 
-    @Transactional(readOnly = false)
-    public void selectWithNonReadOnly() {
-        articleRepository.findAll();
-        commentRepository.findAll();
-    }
-
-    @Transactional(readOnly = true)
-    public void selectWithReadOnly() {
-        articleRepository.findAll();
-        commentRepository.findAll();
-    }
-
+    /**
+     * This test method demonstrates how to avoid LazyInitializationException
+     * by accessing uninitialized proxy or collection within a session.
+     */
     @Transactional
+    @Test
+    public void showSolutionToLazyInitializationException() {
+        List<Comment> comments = articleRepository.findAll().get(0).getComments();
+        System.out.println(comments);
+    }
+
     public void setupArticlesAndComments(int numArticles, int numCommentsPerArticle) {
         List<Article> articles = new ArrayList<>();
 
