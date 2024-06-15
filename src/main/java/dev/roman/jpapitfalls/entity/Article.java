@@ -2,6 +2,8 @@ package dev.roman.jpapitfalls.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 import java.util.List;
 
@@ -20,8 +22,12 @@ public class Article {
 
     private String name;
 
-    @OneToMany
-    @JoinColumn(name = "comment_id", referencedColumnName = "id")
+
+    @OneToMany(mappedBy = "article", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Comment> comments;
+
+    @Fetch(FetchMode.SUBSELECT)
+    @OneToMany(mappedBy = "article", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Comment> commentsSubSelect;
 
 }

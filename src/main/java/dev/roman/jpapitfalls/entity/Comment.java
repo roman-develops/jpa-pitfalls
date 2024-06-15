@@ -19,6 +19,7 @@ public class Comment {
     private String text;
 
     @ManyToOne
+    @JoinColumn(name = "article_id", referencedColumnName = "id")
     private Article article;
 
 }

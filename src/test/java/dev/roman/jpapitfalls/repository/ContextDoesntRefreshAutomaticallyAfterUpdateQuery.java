@@ -19,10 +19,16 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+
+/**
+ * This class demonstrates the behavior of the persistence context in JPA after executing an update query.
+ * It shows that the persistence context does not automatically refresh after an update query, which can
+ * lead to outdated data being present in the persistence context.
+ */
 @Testcontainers
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-public class ContextDoesntRefreshAutomatically {
+public class ContextDoesntRefreshAutomaticallyAfterUpdateQuery {
 
     @Container
     public static PostgreSQLContainer database = new PostgreSQLContainer("postgres:latest");
@@ -40,71 +46,83 @@ public class ContextDoesntRefreshAutomatically {
     @PersistenceContext
     EntityManager entityManager;
 
+    /**
+     * This test demonstrates that the persistence context does not automatically refresh after an update query.
+     * As a result, the old name of the articles is still present in the persistence context, even though it has been updated in the database.
+     */
     @Test
     @Transactional
-    void updateAllArticlesNamesWithoutCacheRefresh() {
+    void showNoAutomaticRefreshAfterUpdate() {
         List<Article> savedArticles = articleRepository
                 .saveAll(generateArticles("Old name", 10));
 
-        // update Article set name = :name
+        // Update the name of all articles in the database
         articleRepository.updateAllNames("New name");
 
         for (Article savedArticle : savedArticles) {
-            // We expect that name == 'Old name' instead of 'New name' because persistence context
-            // doesn't refresh automatically after update query
+            // The old name is still present in the persistence context
             assertEquals("Old name", savedArticle.getName());
         }
     }
 
+    /**
+     * This test demonstrates that the persistence context does not automatically refresh after an update query for a single entity.
+     * As a result, the old name of the article is still present in the persistence context, even though it has been updated in the database.
+     */
     @Test
     @Transactional
-    void updateArticleNameWithoutCacheRefresh() {
+    void showNoAutomaticRefreshAfterSingleEntityUpdate() {
         Article savedArticle =
                 articleRepository.save(Article.builder()
                         .name("Old name")
                         .build());
 
-        // update Article set name = :name
+        // Update the name of the article in the database
         articleRepository.updateNameById("New name", savedArticle.getId());
 
-        // We expect that name == 'Old name' instead of 'New name' because persistence context
-        // doesn't refresh automatically after update query
+        // The old name is still present in the persistence context
         assertEquals("Old name", savedArticle.getName());
     }
 
+    /**
+     * This test demonstrates how to manually refresh the persistence context after an update query.
+     * After the refresh, the new name of the articles is present in the persistence context.
+     */
     @Test
     @Transactional
-    void updateAllArticlesNamesWithCacheRefresh() {
+    void showManualRefreshAfterUpdate() {
         List<Article> savedArticles = articleRepository
                 .saveAll(generateArticles("Old name", 10));
 
-        // update Article set name = :name
+        // Update the name of all articles in the database
         articleRepository.updateAllNames("New name");
 
         for (Article savedArticle : savedArticles) {
             entityManager.refresh(savedArticle);
 
-            // We expect that name == 'New name' because we refresh persistence context
-            // We also can use clearAutomatically in modifying annotation and get the articles again
+            // The new name is now present in the persistence context
             assertEquals("New name", savedArticle.getName());
         }
     }
 
+    /**
+     * This test demonstrates how to manually refresh the persistence context after an update query for a single entity.
+     * After the refresh, the new name of the article is present in the persistence context.
+     */
     @Test
     @Transactional
-    void updateArticleNameWithCacheRefresh() {
+    void showManualRefreshAfterSingleEntityUpdate() {
         Article savedArticle =
                 articleRepository.save(Article.builder()
                         .name("Old name")
                         .build());
 
-        // update Article set name = :name
+        // Update the name of the article in the database
         articleRepository.updateNameById("New name", savedArticle.getId());
 
         entityManager.refresh(savedArticle);
 
-        // We expect that name == 'New name' because we refresh persistence context
-        // We also can use clearAutomatically in modifying annotation and get the articles again
+        // The new name is now present in the persistence context
         assertEquals("New name", savedArticle.getName());
     }
 
